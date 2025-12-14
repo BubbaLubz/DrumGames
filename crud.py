@@ -38,7 +38,11 @@ def get_rudiment_by_difficulty(session: Session, difficulty_id: int):
     return session.query(Rudiment).filter(Rudiment.rudDifficulty == difficulty_id).all()
 
 #Get Rudiment by tags
-pass
+def get_rudiments_by_tag(session: Session, tag_id: int):
+    tag = session.query(Tags).get(tag_id)
+    if tag:
+        return tag.rudiments
+    return []
 
 #GRID CRUD ---
 #Create Grid
@@ -77,7 +81,13 @@ def get_grid_by_type(session: Session, moving: bool = None, modulating: bool = N
     return query.all()
 
 #Get grid by tags
-pass
+def get_grids_by_tag(session: Session, tag_id: int):
+    tag = session.query(Tags).get(tag_id)
+
+    if tag:
+        return tag.grid
+    return []
+    
 
 #TAG CRUD ---
 #Create Tag
@@ -92,7 +102,61 @@ def show_all_tags(session: Session):
     return session.query(Tags).all()
 
 #Add Tag to Rudiment
-pass
+def add_tag_to_rudiment(session: Session, rudiment_id: int, tag_id: int):
+    rudiment = session.query(Rudiment).get(rudiment_id)
+    tag = session.query(Tags).get(tag_id)
+
+    if rudiment and tag:
+        rudiment.tags.append(tag)
+        session.commit()
+        return True
+    return False #if the tag doesnt exist
+
+#Remove Tag from Rudiment
+def remove_tag_from_rudiment(session: Session, rudiment_id: int, tag_id: int):
+    rudiment = session.query(Rudiment).get(rudiment_id)
+    tag = session.query(Tags).get(tag_id)
+
+    if rudiment and tag:
+        rudiment.tags.remove(tag)
+        session.commit()
+        return True
+    return False #if the tag doesnt exist
+
+#Get Tags from Rudiment
+def get_tags_from_rudiment(session: Session, rudiment_id: int):
+    rudiment = session.query(Rudiment).get(rudiment_id)
+
+    if rudiment:
+        return rudiment.tags
+    return []
 
 #Add Tag to Grid
-pass
+def add_tag_to_grid(session:Session, grid_id: int, tag_id: int):
+    grid = session.query(Grid).get(grid.id)
+    tag = session.query(Tags).get(tag_id)
+
+    if grid and tag: 
+        grid.tags.append(tag)
+        session.commit()
+        return True
+    return False
+
+#Remove Tag from Grid
+def remove_tag_from_grid(session:Session, grid_id: int, tag_id: int):
+    grid = session.query(Grid).get(grid.id)
+    tag = session.query(Tags).get(tag_id)
+
+    if grid and tag: 
+        grid.tags.remove(tag)
+        session.commit()
+        return True
+    return False
+
+#Get Tags from Grid
+def get_tags_from_grid(session: Session, grid_id:int):
+    grid = session.query(Grid).get(grid_id)
+
+    if grid:
+        return grid.tags
+    return []
