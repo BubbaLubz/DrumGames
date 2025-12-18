@@ -13,7 +13,7 @@ def read_root():
 
 @app.post("/create-rudiment/")
 def create_rudiment(rudiment: crud.Rudiment):
-    return 
+    pass
 
 class GenerateRequest(BaseModel):
     rudiment_name: str
@@ -22,6 +22,7 @@ class GenerateRequest(BaseModel):
     subdivision_per_beat: int
     beats_per_bar: int
     sequence: list[int]
+    switchHandOnRepeat: bool
 
 @app.post("/getBaseRudiment/")
 def generate_from_rudiment(req: GenerateRequest):
@@ -37,5 +38,6 @@ def generate_from_rudiment(req: GenerateRequest):
         pattern_length = rud.pattern_length,
         beats_per_bar = req.beats_per_bar,
         subdivision_per_beat = req.subdivision_per_beat,
-        gridSequence = req.sequence
+        gridSequence = req.sequence,
+        switchHandOnRepeat = req.switchHandOnRepeat
     )
