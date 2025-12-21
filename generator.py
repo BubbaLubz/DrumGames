@@ -48,45 +48,32 @@ def build_grid(
     
     #Accent Sequence
     
-    # HOW MODULO WORKS TO MOVE ACCENT ACROSS A GROUPING OF 4:
-    # 
-    # If you have a group of 4 positions: [0, 1, 2, 3]
-    # Using `i % 4` cycles through: 0, 1, 2, 3, 0, 1, 2, 3, ...
-    #
-    # Example with stroke index i:
-    #   i=0:  0 % 4 = 0  (position 0 in group)
-    #   i=1:  1 % 4 = 1  (position 1 in group)
-    #   i=2:  2 % 4 = 2  (position 2 in group)
-    #   i=3:  3 % 4 = 3  (position 3 in group)
-    #   i=4:  4 % 4 = 0  (back to position 0 - new group starts)
-    #   i=5:  5 % 4 = 1  (position 1 in new group)
-    #
-    # To move accent position within the group:
-    #   accent_pos = 0  # Start accenting position 0
-    #   if (i % 4) == accent_pos:  # Accent this stroke
-    #
-    # After repeating enough times, shift accent:
-    #   accent_pos = (accent_pos + 1) % 4  # Moves: 0->1->2->3->0
-
-    beat_index = 0  # Track which beat we're on
+    beat_index = 0
     accent_pos = 0
-
-    # Calculate total beats we need to fill
     total_beats = strokes_per_bar // subdivision_per_beat
-
     beats_processed = 0
 
-    for nums in gridSequence:  # nums = how many beats to accent this position
-        while beats_processed < total_beats:
-            # Create accent pattern for this displacement
+    # NEW: Use the maximum value in gridSequence as the base
+    base_value = max(gridSequence)  # Gets the largest number (e.g., 4 from [2,1,4])
+
+    for nums in gridSequence:
+        # Calculate how long one full cycle through all positions takes
+        cycle_length = nums * subdivision_per_beat  # e.g., 2 beats × 4 positions = 8 beats
+        
+        # Calculate section length based on the MAXIMUM value, not the first
+        base_cycle = base_value * subdivision_per_beat  # Always uses max (4 × 4 = 16)
+        cycles_needed = base_cycle // cycle_length  # How many cycles to match base length
+        section_length = cycles_needed * cycle_length
+        
+        section_beats_processed = 0
+        
+        while section_beats_processed < section_length and beats_processed < total_beats:
             noteGrouping = [False] * subdivision_per_beat
-            noteGrouping[accent_pos] = True  # Accent only this position
+            noteGrouping[accent_pos] = True
             
-            # Apply this pattern for 'nums' beats (or remaining beats)
-            beats_to_apply = min(nums, total_beats - beats_processed)
+            beats_to_apply = min(nums, section_length - section_beats_processed, total_beats - beats_processed)
             
             for i in range(beats_to_apply):
-                # Apply pattern to this beat's strokes
                 beat_start = beat_index * subdivision_per_beat
                 for j in range(subdivision_per_beat):
                     stroke_index = beat_start + j
@@ -95,13 +82,11 @@ def build_grid(
                 
                 beat_index += 1
                 beats_processed += 1
+                section_beats_processed += 1
             
-            # Move accent to next position in the grouping
             accent_pos = (accent_pos + 1) % subdivision_per_beat
-            
-            # If we've filled all beats, exit
-            if beats_processed >= total_beats:
-                break
+        
+        accent_pos = 0
 
             
             
