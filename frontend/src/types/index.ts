@@ -31,3 +31,19 @@ export interface GenerateRequest {
     switchHandOnRepeat: boolean;
 }
 
+export interface GridRequest {
+    tempo: number;
+    beats_per_bar: number;
+    subdivision_per_beat: number;
+}
+
+export interface CustomGridRequest {
+    base_sticking: string;
+    grid_sequence: number[];
+    subdivision_per_beat: number;
+    beats_per_bar: number;
+    number_of_bars: number;
+    tempo: number;
+    switch_hand_on_repeat: boolean;
+}
+

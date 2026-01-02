@@ -7,7 +7,7 @@ spec = build_grid(
     pattern_length=4,
     beats_per_bar=48,
     subdivision_per_beat=4,
-    gridSequence=[1,4,2],
+    gridSequence=[4,2,1],
     switchHandOnRepeat=True,
 )
 print(spec)
