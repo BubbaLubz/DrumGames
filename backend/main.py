@@ -3,10 +3,39 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from database import SessionLocal
 import crud, generator
 
 app = FastAPI()
+
+def calculate_bars_for_complete_cycle(
+    grid_sequence: list[int], 
+    subdivision_per_beat: int,
+    beats_per_bar: int
+) -> int:
+    """
+    Calculate the minimum number of bars needed to complete a full grid cycle.
+    
+    Args:
+        grid_sequence: List of integers (e.g., [4, 2, 1])
+        subdivision_per_beat: Number of subdivisions per beat (e.g., 4 for 16th notes)
+        beats_per_bar: Number of beats per bar (e.g., 4)
+    
+    Returns:
+        Minimum number of bars needed for a complete cycle
+    """
+    if not grid_sequence:
+        return 1
+    
+    base_value = max(grid_sequence)
+    base_cycle = base_value * subdivision_per_beat  # Total beats for base cycle
+    total_cycle_beats = len(grid_sequence) * base_cycle  # Total beats for full grid cycle
+    
+    # Calculate bars needed (round up using ceiling division)
+    bars_needed = (total_cycle_beats + beats_per_bar - 1) // beats_per_bar
+    
+    return max(1, bars_needed)  # At least 1 bar
 
 # Add CORS middleware
 app.add_middleware(
@@ -64,7 +93,7 @@ class CustomGridRequest(BaseModel):
     grid_sequence: list[int]
     subdivision_per_beat: int
     beats_per_bar: int
-    number_of_bars: int
+    number_of_bars: Optional[int] = None  # Auto-calculate if None
     tempo: int = 120
     switch_hand_on_repeat: bool = False
 
@@ -72,6 +101,14 @@ class CustomGridRequest(BaseModel):
 def generate_custom_grid(req: CustomGridRequest):
     """Generate a grid with custom sticking and sequence using generator.build_grid"""
     from schemas import PatternSpec
+    
+    # Auto-calculate bars if not provided
+    if req.number_of_bars is None:
+        req.number_of_bars = calculate_bars_for_complete_cycle(
+            req.grid_sequence,
+            req.subdivision_per_beat,
+            req.beats_per_bar
+        )
     
     # Generate one bar using the generator
     pattern_spec = generator.build_grid(

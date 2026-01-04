@@ -220,7 +220,9 @@ export function renderPattern(
     
     // Limit stave width to container width to prevent horizontal scrolling
     const staveWidth = Math.min(containerWidth - 20, config.width || containerWidth); // -20 for padding
-    const staveHeight = 100; // Height per stave
+    // Increase stave height when tuplets are used to provide more space for brackets and sticking annotations
+    const hasTuplets = requiresTuplet(subdivisionPerBeat);
+    const staveHeight = hasTuplets ? 120 : 100; // Extra height for tuplets to prevent bracket/annotation overlap
     const staveSpacing = 20; // Space between staves
     const startY = 40;
     
@@ -259,6 +261,7 @@ export function renderPattern(
         const totalBeats = Math.ceil(notesForBeams.length / subdivisionPerBeat);
         // Use exact beats - VexFlow handles tuplet compression automatically
         const tempVoice = new Voice({ numBeats: totalBeats, beatValue: 4 });
+        tempVoice.setStrict(false); // Use non-strict mode to allow flexible durations (prevents "Too many ticks" error)
         tempVoice.addTickables(staveNotes);
 
         // Try to find optimal spacing that fits all notes
@@ -420,6 +423,8 @@ export function renderPattern(
         
         // Create tuplets if needed (for triplets, quintuplets, etc.)
         const tuplets: Tuplet[] = [];
+        const beams: Beam[] = [];
+        
         if (requiresTuplet(subdivisionPerBeat)) {
             const tupletRatio = getTupletRatio(subdivisionPerBeat);
             if (tupletRatio) {
@@ -430,24 +435,34 @@ export function renderPattern(
                     if (beatNotes.length === subdivisionPerBeat) {
                         const tuplet = new Tuplet(beatNotes, {
                             numNotes: tupletRatio[0],
-                            notesOccupied: tupletRatio[1]
+                            notesOccupied: tupletRatio[1],
+                            ratioed: false  // Show only the number (e.g., "6") without ratio (e.g., "6:4")
                         });
+                        // Position tuplet bracket above to avoid overlapping with sticking annotations (which are below)
+                        tuplet.setTupletLocation(Tuplet.LOCATION_TOP);
+                        tuplet.setBracketed(true); // Ensure bracket is shown
                         tuplets.push(tuplet);
+                        
+                        // Create beams for tuplets to connect the notes (if 2 or more notes)
+                        // Beams connect all notes in the tuplet group for cleaner appearance
+                        if (beatNotes.length >= 2 && duration !== 'q' && duration !== 'w' && duration !== 'h') {
+                            const beam = new Beam(beatNotes);
+                            beams.push(beam);
+                        }
                     }
                 }
             }
-        }
-        
-        // Create beams for all notes on this stave (if not tuplets)
-        const beams: Beam[] = [];
-        if (!requiresTuplet(subdivisionPerBeat) && duration !== 'q' && duration !== 'w' && duration !== 'h') {
-            // Group notes by beat (subdivisionPerBeat notes per group)
-            for (let i = 0; i < notesForBeams.length; i += subdivisionPerBeat) {
-                const beatNotes = notesForBeams.slice(i, i + subdivisionPerBeat);
-                // Only create beam if we have 2 or more notes in the group
-                if (beatNotes.length >= 2) {
-                    const beam = new Beam(beatNotes);
-                    beams.push(beam);
+        } else {
+            // Create beams for regular (non-tuplet) notes
+            if (duration !== 'q' && duration !== 'w' && duration !== 'h') {
+                // Group notes by beat (subdivisionPerBeat notes per group)
+                for (let i = 0; i < notesForBeams.length; i += subdivisionPerBeat) {
+                    const beatNotes = notesForBeams.slice(i, i + subdivisionPerBeat);
+                    // Only create beam if we have 2 or more notes in the group
+                    if (beatNotes.length >= 2) {
+                        const beam = new Beam(beatNotes);
+                        beams.push(beam);
+                    }
                 }
             }
         }
@@ -468,6 +483,7 @@ export function renderPattern(
 
         // Create voice and format for this stave (includes both notes and barlines)
         const voice = new Voice({ numBeats: beatsWithBuffer, beatValue: 4 });
+        voice.setStrict(false); // Use non-strict mode to allow flexible durations (prevents "Too many ticks" error)
         voice.addTickables(staveNotes);
 
         // Use optimized spacing for this stave (automatically adjusted)

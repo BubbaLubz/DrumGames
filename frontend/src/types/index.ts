@@ -42,7 +42,7 @@ export interface CustomGridRequest {
     grid_sequence: number[];
     subdivision_per_beat: number;
     beats_per_bar: number;
-    number_of_bars: number;
+    number_of_bars?: number;  // Optional - backend will calculate if not provided
     tempo: number;
     switch_hand_on_repeat: boolean;
 }

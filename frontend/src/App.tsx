@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import { renderPattern } from './utils/vexflowRenderer';
@@ -13,8 +13,55 @@ function App() {
   const [gridSequence, setGridSequence] = useState('4,2,1');
   const [subdivisionPerBeat, setSubdivisionPerBeat] = useState(4);
   const [beatsPerBar, setBeatsPerBar] = useState(4);
-  const [numberOfBars, setNumberOfBars] = useState(8);
   const [tempo, setTempo] = useState(120);
+
+  // Calculate number of bars automatically
+  const calculatedBars = useMemo(() => {
+    try {
+      const sequenceArray = gridSequence
+        .split(',')
+        .map(s => parseInt(s.trim()))
+        .filter(n => !isNaN(n));
+      
+      if (sequenceArray.length === 0) {
+        return 8; // Default fallback
+      }
+      
+      const baseValue = Math.max(...sequenceArray);
+      const baseCycle = baseValue * subdivisionPerBeat;
+      const totalCycleBeats = sequenceArray.length * baseCycle;
+      const barsNeeded = Math.ceil(totalCycleBeats / beatsPerBar);
+      
+      return Math.max(1, barsNeeded);
+    } catch {
+      return 8; // Default fallback
+    }
+  }, [gridSequence, subdivisionPerBeat, beatsPerBar]);
+
+  // Get tuplet notation label
+  const getTupletLabel = (subdivision: number): string => {
+    const tupletLabels: Record<number, string> = {
+      3: '3let (triplets)',
+      5: '5let (quintuplets)',
+      6: '6let (sextuplets)',
+      7: '7let (septuplets)',
+      9: '9let (nonuplets)',
+    };
+    
+    if (tupletLabels[subdivision]) {
+      return tupletLabels[subdivision];
+    }
+    
+    // For non-tuplet subdivisions (power of 2)
+    const standardLabels: Record<number, string> = {
+      1: 'quarter notes',
+      2: 'eighth notes',
+      4: 'sixteenth notes',
+      8: 'thirty-second notes',
+    };
+    
+    return standardLabels[subdivision] || `${subdivision} subdivisions`;
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +93,7 @@ function App() {
         grid_sequence: sequenceArray,
         subdivision_per_beat: subdivisionPerBeat,
         beats_per_bar: beatsPerBar,
-        number_of_bars: numberOfBars,
+        // Don't send number_of_bars - backend will calculate it automatically
         tempo: tempo,
         switch_hand_on_repeat: false
       });
@@ -58,7 +105,7 @@ function App() {
       console.log('=== ACCENT DEBUG (ALL BARS) ===');
       console.log('Grid sequence:', sequenceArray);
       console.log(`Beats per bar: ${beatsPerBar}, Subdivision: ${subdivisionPerBeat}, Strokes per bar: ${strokesPerBar}`);
-      console.log(`Requested bars: ${numberOfBars}, Calculated bars: ${calculatedBars}, Total strokes: ${patternSpec.strokes.length}`);
+      console.log(`Calculated bars: ${calculatedBars}, Actual bars: ${calculatedBars}, Total strokes: ${patternSpec.strokes.length}`);
       console.log(`Total accents: ${patternSpec.strokes.filter(s => s.isAccent).length}`);
       
       // Show accent pattern for each bar
@@ -108,7 +155,7 @@ function App() {
               value={baseSticking}
               onChange={(e) => setBaseSticking(e.target.value)}
               placeholder="e.g., RLRL or RLRRLL"
-              style={{ width: '100%', padding: '8px', fontSize: '16px' }}
+              style={{ width: '100%', padding: '8px', fontSize: '16px', textAlign: 'center' }}
             />
             <small style={{ color: '#666', display: 'block', marginTop: '5px' }}>Use R for right hand, L for left hand, B for both</small>
           </div>
@@ -122,14 +169,14 @@ function App() {
               value={gridSequence}
               onChange={(e) => setGridSequence(e.target.value)}
               placeholder="e.g., 4,2,1 or 2,1,4"
-              style={{ width: '100%', padding: '8px', fontSize: '16px' }}
+              style={{ width: '100%', padding: '8px', fontSize: '16px', textAlign: 'center' }}
             />
             <small style={{ color: '#666', display: 'block', marginTop: '5px' }}>Numbers separated by commas (e.g., 4,2,1)</small>
           </div>
           
           <div style={{ marginBottom: '15px' }}>
             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-              Subdivision Per Beat:
+              Subdivision/Tuplet:
             </label>
             <input
               type="number"
@@ -137,12 +184,28 @@ function App() {
               onChange={(e) => setSubdivisionPerBeat(parseInt(e.target.value) || 4)}
               min="1"
               max="8"
-              style={{ width: '100%', padding: '8px', fontSize: '16px' }}
+              style={{ width: '100%', padding: '8px', fontSize: '16px', textAlign: 'center' }}
             />
-            <small style={{ color: '#666', display: 'block', marginTop: '5px' }}>4 = sixteenth notes, 3 = triplets, 2 = eighth notes</small>
+            <small style={{ color: '#666', display: 'block', marginTop: '5px' }}>
+              4 = sixteenth notes, 3 = triplets, 2 = eighth notes
+            </small>
+            {[3, 5, 6, 7, 9].includes(subdivisionPerBeat) && (
+              <div style={{ 
+                marginTop: '8px', 
+                padding: '8px', 
+                backgroundColor: '#e7f3ff', 
+                border: '1px solid #b3d9ff', 
+                borderRadius: '4px',
+                fontSize: '14px',
+                color: '#0066cc',
+                fontWeight: '500'
+              }}>
+                Tuplet notation: <strong>{getTupletLabel(subdivisionPerBeat)}</strong>
+              </div>
+            )}
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
                 Beats Per Bar:
@@ -153,21 +216,7 @@ function App() {
                 onChange={(e) => setBeatsPerBar(parseInt(e.target.value) || 4)}
                 min="1"
                 max="8"
-                style={{ width: '100%', padding: '8px', fontSize: '16px' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Number of Bars:
-              </label>
-              <input
-                type="number"
-                value={numberOfBars}
-                onChange={(e) => setNumberOfBars(parseInt(e.target.value) || 8)}
-                min="1"
-                max="16"
-                style={{ width: '100%', padding: '8px', fontSize: '16px' }}
+                style={{ width: '100%', padding: '8px', fontSize: '16px', textAlign: 'center' }}
               />
             </div>
             
@@ -181,7 +230,7 @@ function App() {
                 onChange={(e) => setTempo(parseInt(e.target.value) || 120)}
                 min="60"
                 max="200"
-                style={{ width: '100%', padding: '8px', fontSize: '16px' }}
+                style={{ width: '100%', padding: '8px', fontSize: '16px', textAlign: 'center' }}
               />
             </div>
           </div>
